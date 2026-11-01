@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0d0d0f">
+<title>影视播放</title>
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;background:#0d0d0f;color:#e8e8ea;
+    font-family:-apple-system,BlinkMacSystemFont,"PingFang SC","Microsoft YaHei",sans-serif}
+  body{display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:24px;min-height:100vh;min-height:100dvh}
+
+  /* ---------- 首页 ---------- */
+  #home{width:100%;max-width:460px}
+  .logo{display:flex;align-items:center;gap:10px;margin-bottom:26px}
+  .logo .dot{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,#ff4d4d,#c81e1e);
+    display:flex;align-items:center;justify-content:center;box-shadow:0 6px 20px rgba(229,51,51,.35)}
+  .logo h1{font-size:19px;margin:0;font-weight:600;letter-spacing:.5px}
+  .logo small{display:block;font-size:11px;color:#7c7f86;font-weight:400;letter-spacing:1px;margin-top:2px}
+  .card{background:#16171a;border:1px solid #24262b;border-radius:16px;padding:16px}
+  label{display:block;font-size:12px;color:#8b8f96;margin-bottom:8px;letter-spacing:.5px}
+  textarea{width:100%;min-height:88px;resize:none;background:#0f1013;border:1px solid #2a2d33;
+    border-radius:12px;color:#e8e8ea;padding:12px;font-size:14px;line-height:1.5;outline:none;
+    font-family:inherit}
+  textarea:focus{border-color:#e53333}
+  .row{display:flex;gap:10px;margin-top:14px}
+  button{font-family:inherit;cursor:pointer;border:none;border-radius:12px;font-size:15px;transition:.15s}
+  .btn-main{flex:1;padding:14px;background:linear-gradient(135deg,#ff4d4d,#d32b2b);color:#fff;font-weight:600;
+    box-shadow:0 8px 24px rgba(211,43,43,.28)}
+  .btn-main:active{transform:scale(.98)}
+  .btn-ghost{padding:14px 16px;background:#22242a;color:#b9bcc2}
+  .tips{margin-top:14px;font-size:12px;color:#6b6f77;line-height:1.7}
+  .badge{display:inline-block;padding:2px 8px;border-radius:8px;background:#1e2025;color:#8b8f96;
+    font-size:11px;margin-right:6px}
+
+  /* ---------- 播放 ---------- */
+  #play{position:fixed;inset:0;background:#000;display:none;z-index:10}
+  #play.on{display:block}
+  #frame{width:100%;height:100%;border:0;display:block}
+  #tap{position:absolute;inset:0;background:#000;display:flex;flex-direction:column;
+    align-items:center;justify-content:center;gap:16px;color:#cfd2d6;font-size:15px;cursor:pointer;z-index:3}
+  #tap .circle{width:86px;height:86px;border-radius:50%;background:#e53333;
+    display:flex;align-items:center;justify-content:center;box-shadow:0 6px 30px rgba(229,51,51,.45)}
+  #tap small{font-size:12px;color:#7c7f86}
+  .topbar{position:absolute;top:calc(env(safe-area-inset-top,0px) + 10px);left:10px;right:10px;
+    display:flex;justify-content:space-between;z-index:5;gap:8px}
+  .topbar .left,.topbar .right{display:flex;gap:6px;flex-wrap:wrap}
+  .chip{padding:7px 13px;border-radius:16px;font-size:12px;background:rgba(255,255,255,.16);color:#fff;
+    backdrop-filter:blur(6px)}
+  .chip.active{background:#e53333}
+  .chip.quit{background:rgba(0,0,0,.5)}
+  #popup{position:absolute;inset:0;background:#000;display:none;flex-direction:column;
+    align-items:center;justify-content:center;gap:16px;color:#cfd2d6;font-size:15px;z-index:4}
+</style>
+</head>
+<body>
+
+<div id="home">
+  <div class="logo">
+    <div class="dot">
+      <svg width="20" height="20" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+    </div>
+    <div>
+      <h1>影视播放</h1>
+      <small>粘贴链接 · 即刻观看</small>
+    </div>
+  </div>
+
+  <div class="card">
+    <label>视频页面链接</label>
+    <textarea id="url" placeholder="粘贴腾讯 / 爱奇艺 / 优酷 等视频页面链接…" spellcheck="false"></textarea>
+    <div class="row">
+      <button class="btn-ghost" id="paste">粘贴</button>
+      <button class="btn-main" id="go">开始播放</button>
+    </div>
+    <div class="tips">
+      <span class="badge">提示</span>支持手机与电脑浏览器；若视频未自动播放，点一下屏幕即可。
+    </div>
+  </div>
+</div>
+
+<div id="play">
+  <iframe id="frame" allowfullscreen allow="autoplay; fullscreen; encrypted-media" referrerpolicy="no-referrer"></iframe>
+  <div id="popup">
+    <div>该线路需在新窗口播放</div>
+    <button class="btn-main" id="opennew" style="padding:12px 28px">打开播放器</button>
+  </div>
+  <div id="tap">
+    <div class="circle">
+      <svg width="36" height="36" viewBox="0 0 24 24" fill="#fff"><path d="M8 5v14l11-7z"/></svg>
+    </div>
+    <div>点按任意位置，立即播放</div>
+    <small id="tapinfo"></small>
+  </div>
+  <div class="topbar">
+    <div class="left" id="lines"></div>
+    <div class="right">
+      <button class="chip" id="next">换线路</button>
+      <button class="chip quit" id="quit">返回</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // 备用线路（均为公开的第三方网页播放器，不含任何密钥）
+  var LINES = [
+    { name: '线路1', url: 'https://ll9-beta-tos.1ljx.com/_player/?url={url}', popup: false },
+    { name: '线路2', url: 'https://www.230it.com/Url/Jx/V/1.php?url={url}', popup: false }
+  ];
+
+  var $ = function (id) { return document.getElementById(id); };
+  var cur = 0, videoUrl = '';
+
+  // 记住上次输入的链接
+  try { var last = localStorage.getItem('vp_last'); if (last) $('url').value = last; } catch (e) {}
+
+  // 支持 ?url= 直接带链接
+  var q = new URLSearchParams(location.search).get('url');
+  if (q) $('url').value = q;
+
+  $('paste').onclick = async function () {
+    try {
+      var t = await navigator.clipboard.readText();
+      if (t) $('url').value = t.trim();
+    } catch (e) { $('url').focus(); }
+  };
+
+  function buildUrl(i) {
+    return LINES[i].url.replace('{url}', encodeURIComponent(videoUrl));
+  }
+
+  function showLine(i) {
+    cur = i;
+    var btns = $('lines').children;
+    for (var j = 0; j < btns.length; j++) btns[j].className = 'chip' + (j === i ? ' active' : '');
+    if (LINES[i].popup) {
+      $('frame').style.display = 'none'; $('popup').style.display = 'flex';
+      $('opennew').onclick = function () { window.open(buildUrl(i), '_blank'); };
+    } else {
+      $('popup').style.display = 'none'; $('frame').style.display = 'block';
+      $('frame').src = buildUrl(i);
+    }
+  }
+
+  function start() {
+    var v = $('url').value.trim();
+    if (!v) { $('url').focus(); return; }
+    videoUrl = v;
+    try { localStorage.setItem('vp_last', v); } catch (e) {}
+    $('tapinfo').textContent = '共 ' + LINES.length + ' 条线路';
+    $('play').classList.add('on');
+    // 先在用户手势内把 src 挂上（拿到激活态才能自动播放），再显示点击层兜底
+    showLine(0);
+    $('tap').style.display = 'flex';
+  }
+
+  // 用户点一下兜底层：重新挂载（手势 → 播放器可出声自动播）
+  $('tap').addEventListener('pointerdown', function () {
+    $('tap').style.display = 'none';
+    showLine(cur);
+  });
+
+  $('go').onclick = start;
+  $('url').addEventListener('keydown', function (e) {
+    if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) start();
+  });
+
+  $('next').onclick = function () { showLine((cur + 1) % LINES.length); };
+  $('quit').onclick = function () {
+    $('play').classList.remove('on');
+    $('frame').src = 'about:blank';
+  };
+
+  // 生成线路按钮
+  LINES.forEach(function (l, i) {
+    var b = document.createElement('button');
+    b.className = 'chip'; b.textContent = l.name;
+    b.onclick = function () { showLine(i); };
+    $('lines').appendChild(b);
+  });
+</script>
+</body>
+</html>
